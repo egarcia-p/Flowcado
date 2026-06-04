@@ -39,7 +39,7 @@
         clearInterval(intervalId);
         intervalId = null;
         startButton.disabled = false;
-        startButton.textContent = "Finished";
+        startButton.textContent = "Reset";
         pauseButton.disabled = true;
         
         // Log session completion via API
@@ -68,6 +68,20 @@
     pauseButton.disabled = true;
   }
 
-  startButton.addEventListener('click', startTimer);
+  function resetTimer() {
+    timeInSeconds = initialTimeMinutes * 60;
+    startTime = null;
+    timerDisplay.textContent = formatTime(timeInSeconds);
+    startButton.textContent = "Start";
+    pauseButton.disabled = true;
+  }
+
+  startButton.addEventListener('click', () => {
+    if (startButton.textContent === "Reset") {
+      resetTimer();
+    } else {
+      startTimer();
+    }
+  });
   pauseButton.addEventListener('click', pauseTimer);
 </script>
