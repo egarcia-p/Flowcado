@@ -2,12 +2,15 @@
   <h1>Focus Timer</h1>
   <p id="timer-display">25:00</p>
   <button id="start-btn">Start</button>
+  <button id="pause-btn" disabled>Pause</button>
 </div>
 <script define:vars={{ initialTimeMinutes: 25 }}>
-  // FocusTimer.astro client script logic goes here
   const timerDisplay = document.getElementById('timer-display');
   const startButton = document.getElementById('start-btn');
+  const pauseButton = document.getElementById('pause-btn');
   let timeInSeconds = initialTimeMinutes * 60;
+  let intervalId = null;
+  let startTime = null;
 
   function formatTime(seconds) {
     const minutes = Math.floor(seconds / 60);
@@ -17,12 +20,16 @@
 
   timerDisplay.textContent = formatTime(timeInSeconds);
 
-  let intervalId = null;
-
   function startTimer() {
     if (intervalId) return; // Already running
+    
+    if (!startTime) {
+      startTime = new Date();
+    }
+    
     startButton.disabled = true;
     startButton.textContent = "Running...";
+    pauseButton.disabled = false;
 
     intervalId = setInterval(() => {
       timeInSeconds--;
@@ -33,17 +40,34 @@
         intervalId = null;
         startButton.disabled = false;
         startButton.textContent = "Finished";
+        pauseButton.disabled = true;
+        
         // Log session completion via API
         const endTime = new Date();
         const durationMinutes = Math.ceil((endTime - startTime) / 60000); // Duration in minutes
         fetch('/api/session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ start_time: startTime, end_time: endTime, total_duration_minutes: durationMinutes })
+          body: JSON.stringify({ 
+            start_time: startTime.toISOString(), 
+            end_time: endTime.toISOString(), 
+            total_duration_minutes: durationMinutes,
+            status: 'completed'
+          })
         });
       }
     }, 1000);
   }
 
+  function pauseTimer() {
+    if (!intervalId) return;
+    clearInterval(intervalId);
+    intervalId = null;
+    startButton.disabled = false;
+    startButton.textContent = "Resume";
+    pauseButton.disabled = true;
+  }
+
   startButton.addEventListener('click', startTimer);
+  pauseButton.addEventListener('click', pauseTimer);
 </script>
