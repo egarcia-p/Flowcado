@@ -1,0 +1,16 @@
+{
+  "name": "flowcado-server",
+  "version": "1.0.0",
+  "description": "Flowcado backend API server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "body-parser": "^1.20.3",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "sqlite3": "^6.0.1"
+  }
+}
