@@ -44,7 +44,7 @@
         
         // Log session completion via API
         const endTime = new Date();
-        const durationMinutes = Math.ceil((endTime - startTime) / 60000); // Duration in minutes
+        const durationMinutes = Math.round((endTime - startTime) / 60000); // Duration in minutes
         fetch('/api/session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
