@@ -1,0 +1,59 @@
+<div class="metrics-display">
+  <h2>Your Flow State Metrics</h2>
+  <p>Total Sessions: <span id="total-sessions">0</span></p>
+  <p>Current Streak: <span id="current-streak">0 days</span></p>
+  <p>Weekly Average: <span id="weekly-average">N/A</span></p>
+</div>
+
+<script define:vars={{ apiUrl: '/api/sessions' }}>
+  const totalSessionsEl = document.getElementById('total-sessions');
+  const currentStreakEl = document.getElementById('current-streak');
+  const weeklyAverageEl = document.getElementById('weekly-average');
+
+  async function fetchMetrics() {
+    try {
+      const response = await fetch(apiUrl);
+      if (!response.ok) throw new Error('Failed to fetch session data.');
+      const sessions = await response.json();
+
+      // --- Metric Calculation Logic ---
+      let totalCount = sessions.length;
+      totalSessionsEl.textContent = totalCount;
+
+      // Simple streak calculation (requires sorting and date comparison)
+      if (sessions.length > 0) {
+        // Sort by end_time descending to check recent activity first
+        const sortedSessions = [...sessions].sort((a, b) => new Date(b.end_time) - new Date(a.end_time));
+        let streakCount = 0;
+        let lastDate = null;
+
+        for (const session of sortedSessions) {
+          const currentDate = new Date(session.end_time);
+          // Check if the current date is exactly one day after the previous logged session's end date
+          if (!lastDate || (currentDate.getTime() === lastDate.getTime() + (24 * 60 * 60 * 1000))) {
+            streakCount++;
+            lastDate = currentDate;
+          } else if (currentDate < lastDate) {
+             // If the session is older than the previous one, it breaks the streak check for this simple model.
+          }
+        }
+        currentStreakEl.textContent = `${streakCount} day${streakCount !== 1 ? 's' : ''}`;
+
+        // Simple weekly average (assuming sessions are logged over the last week for simplicity)
+        const totalDurationMinutes = sessions.reduce((sum, session) => sum + session.total_duration_minutes, 0);
+        const avgPerSession = totalCount > 0 ? Math.round(totalDurationMinutes / totalCount) : 0;
+        weeklyAverageEl.textContent = `${avgPerSession} minutes`;
+
+      } else {
+        currentStreakEl.textContent = '0 days';
+        weeklyAverageEl.textContent = 'N/A';
+      }
+
+    } catch (error) {
+      console.error("Error fetching metrics:", error);
+      totalSessionsEl.textContent = 'Error';
+    }
+  }
+
+  fetchMetrics();
+</script>

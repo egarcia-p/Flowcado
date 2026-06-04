@@ -1,0 +1,49 @@
+<div class="focus-timer">
+  <h1>Focus Timer</h1>
+  <p id="timer-display">25:00</p>
+  <button id="start-btn">Start</button>
+</div>
+<script define:vars={{ initialTimeMinutes: 25 }}>
+  // FocusTimer.astro client script logic goes here
+  const timerDisplay = document.getElementById('timer-display');
+  const startButton = document.getElementById('start-btn');
+  let timeInSeconds = initialTimeMinutes * 60;
+
+  function formatTime(seconds) {
+    const minutes = Math.floor(seconds / 60);
+    const secondsRemaining = seconds % 60;
+    return `${String(minutes).padStart(2, '0')}:${String(secondsRemaining).padStart(2, '0')}`;
+  }
+
+  timerDisplay.textContent = formatTime(timeInSeconds);
+
+  let intervalId = null;
+
+  function startTimer() {
+    if (intervalId) return; // Already running
+    startButton.disabled = true;
+    startButton.textContent = "Running...";
+
+    intervalId = setInterval(() => {
+      timeInSeconds--;
+      timerDisplay.textContent = formatTime(timeInSeconds);
+
+      if (timeInSeconds <= 0) {
+        clearInterval(intervalId);
+        intervalId = null;
+        startButton.disabled = false;
+        startButton.textContent = "Finished";
+        // Log session completion via API
+        const endTime = new Date();
+        const durationMinutes = Math.ceil((endTime - startTime) / 60000); // Duration in minutes
+        fetch('/api/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ start_time: startTime, end_time: endTime, total_duration_minutes: durationMinutes })
+        });
+      }
+    }, 1000);
+  }
+
+  startButton.addEventListener('click', startTimer);
+</script>
