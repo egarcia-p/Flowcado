@@ -1,13 +1,17 @@
-<div class="focus-timer">
-  <h1>Focus Timer</h1>
-  <p id="timer-display">25:00</p>
-  <button id="start-btn">Start</button>
-  <button id="pause-btn" disabled>Pause</button>
+<div class="focus-timer-card">
+  <div class="timer-display-container">
+    <div class="timer-glow"></div>
+    <span id="timer-display">25:00</span>
+  </div>
+  <div class="timer-controls">
+    <button id="start-btn" class="control-btn primary">Start</button>
+    <button id="pause-btn" class="control-btn secondary" disabled>Pause</button>
+  </div>
 </div>
 <script define:vars={{ initialTimeMinutes: 25 }}>
-  const timerDisplay = document.getElementById('timer-display');
-  const startButton = document.getElementById('start-btn');
-  const pauseButton = document.getElementById('pause-btn');
+  const timerDisplay = document.getElementById("timer-display");
+  const startButton = document.getElementById("start-btn");
+  const pauseButton = document.getElementById("pause-btn");
   let timeInSeconds = initialTimeMinutes * 60;
   let intervalId = null;
   let startTime = null;
@@ -15,18 +19,18 @@
   function formatTime(seconds) {
     const minutes = Math.floor(seconds / 60);
     const secondsRemaining = seconds % 60;
-    return `${String(minutes).padStart(2, '0')}:${String(secondsRemaining).padStart(2, '0')}`;
+    return `${String(minutes).padStart(2, "0")}:${String(secondsRemaining).padStart(2, "0")}`;
   }
 
   timerDisplay.textContent = formatTime(timeInSeconds);
 
   function startTimer() {
     if (intervalId) return; // Already running
-    
+
     if (!startTime) {
       startTime = new Date();
     }
-    
+
     startButton.disabled = true;
     startButton.textContent = "Running...";
     pauseButton.disabled = false;
@@ -41,19 +45,19 @@
         startButton.disabled = false;
         startButton.textContent = "Reset";
         pauseButton.disabled = true;
-        
+
         // Log session completion via API
         const endTime = new Date();
         const durationMinutes = Math.round((endTime - startTime) / 60000); // Duration in minutes
-        fetch('/api/session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            start_time: startTime.toISOString(), 
-            end_time: endTime.toISOString(), 
+        fetch("/api/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            start_time: startTime.toISOString(),
+            end_time: endTime.toISOString(),
             total_duration_minutes: durationMinutes,
-            status: 'completed'
-          })
+            status: "completed",
+          }),
         });
       }
     }, 1000);
@@ -76,12 +80,107 @@
     pauseButton.disabled = true;
   }
 
-  startButton.addEventListener('click', () => {
+  startButton.addEventListener("click", () => {
     if (startButton.textContent === "Reset") {
       resetTimer();
     } else {
       startTimer();
     }
   });
-  pauseButton.addEventListener('click', pauseTimer);
+  pauseButton.addEventListener("click", pauseTimer);
 </script>
+
+<style>
+  .focus-timer-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--card-shadow);
+    border-radius: 24px;
+    padding: 2.5rem 2rem;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+    backdrop-filter: blur(12px);
+  }
+
+  .timer-display-container {
+    position: relative;
+    width: 220px;
+    height: 220px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%;
+    border: 3px solid var(--border-color);
+    background: rgba(10, 10, 10, 0.4);
+  }
+
+  .timer-glow {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 50%;
+    box-shadow: inset 0 0 25px var(--accent-glow);
+    pointer-events: none;
+  }
+
+  #timer-display {
+    font-size: 3.5rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-primary);
+    text-shadow: 0 0 10px var(--accent-glow);
+    letter-spacing: -0.02em;
+  }
+
+  .timer-controls {
+    display: flex;
+    gap: 1rem;
+    width: 100%;
+  }
+
+  .control-btn {
+    flex: 1;
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 0.8rem 1.5rem;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .control-btn.primary {
+    background-color: var(--accent);
+    color: #05070a;
+  }
+
+  .control-btn.primary:hover:not(:disabled) {
+    background-color: #a3e635;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(132, 204, 22, 0.4);
+  }
+
+  .control-btn.secondary {
+    background-color: #21262d;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+  }
+
+  .control-btn.secondary:hover:not(:disabled) {
+    background-color: #30363d;
+    transform: translateY(-2px);
+  }
+
+  .control-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+</style>

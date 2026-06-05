@@ -6,20 +6,108 @@ import MetricsDisplay from '../components/MetricsDisplay.astro';
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Flowcado - Focus Timer</title>
-    <!-- Assuming Tailwind CSS is configured globally -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   </head>
   <body>
-    <main class="container mx-auto p-4">
-      <h1 class="text-3xl font-bold mb-6 text-center">Welcome to Flowcado</h1>
+    <main class="app-container">
+      <header class="app-header">
+        <span class="logo-icon">🥑</span>
+        <h1 class="logo-text">Flowcado</h1>
+      </header>
 
-      <!-- Focus Timer Component -->
-      <FocusTimer />
+      <section class="timer-section">
+        <FocusTimer />
+      </section>
 
-      <div class="my-12 border-t pt-8"></div>
-
-      <!-- Metrics Display Component -->
-      <MetricsDisplay />
+      <section class="metrics-section">
+        <MetricsDisplay />
+      </section>
     </main>
   </body>
 </html>
+
+<style is:global>
+  :root {
+    --bg-color: #0b0f12;
+    --card-bg: rgba(22, 27, 34, 0.6);
+    --text-primary: #f0f6fc;
+    --text-secondary: #8b949e;
+    --accent: #84cc16; /* Avocado Green */
+    --accent-glow: rgba(132, 204, 22, 0.15);
+    --border-color: #21262d;
+    --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    background-color: var(--bg-color);
+    background-image: radial-gradient(circle at 50% -20%, rgba(132, 204, 22, 0.08) 0%, transparent 60%);
+    color: var(--text-primary);
+    font-family: 'Outfit', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem 1rem;
+    overflow-x: hidden;
+  }
+</style>
+
+<style>
+  .app-container {
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2.5rem;
+  }
+
+  .app-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .logo-icon {
+    font-size: 2.2rem;
+    animation: float 4s ease-in-out infinite;
+  }
+
+  .logo-text {
+    font-size: 2.25rem;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    background: linear-gradient(135deg, #a3e635 0%, #65a30d 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .timer-section {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  .metrics-section {
+    width: 100%;
+  }
+
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px) rotate(0deg);
+    }
+    50% {
+      transform: translateY(-8px) rotate(5deg);
+    }
+  }
+</style>
