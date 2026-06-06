@@ -58,6 +58,8 @@
             total_duration_minutes: durationMinutes,
             status: "completed",
           }),
+        }).then(() => {
+          window.dispatchEvent(new CustomEvent('session-logged'));
         });
       }
     }, 1000);

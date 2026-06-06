@@ -1,6 +1,7 @@
 ---
 import FocusTimer from '../components/FocusTimer.astro';
 import MetricsDisplay from '../components/MetricsDisplay.astro';
+import ContributionGrid from '../components/ContributionGrid.astro';
 ---
 
 <html lang="en">
@@ -25,6 +26,7 @@ import MetricsDisplay from '../components/MetricsDisplay.astro';
 
       <section class="metrics-section">
         <MetricsDisplay />
+        <ContributionGrid />
       </section>
     </main>
   </body>
@@ -100,6 +102,9 @@ import MetricsDisplay from '../components/MetricsDisplay.astro';
 
   .metrics-section {
     width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
   }
 
   @keyframes float {

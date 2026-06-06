@@ -1,0 +1,396 @@
+<div class="contribution-card">
+  <div class="contribution-header">
+    <h3 class="contribution-title">Monthly Activity</h3>
+    <div class="month-nav">
+      <button id="prev-month-btn" class="nav-btn" aria-label="Previous Month">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+          <path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
+        </svg>
+      </button>
+      <span id="current-month-display" class="month-display">June 2026</span>
+      <button id="next-month-btn" class="nav-btn" aria-label="Next Month">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+          <path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="grid-wrapper">
+    <div class="grid-labels">
+      <span class="label-empty"></span>
+      <span>Mon</span>
+      <span class="label-empty"></span>
+      <span>Wed</span>
+      <span class="label-empty"></span>
+      <span>Fri</span>
+      <span class="label-empty"></span>
+    </div>
+    <div id="contribution-grid-body" class="grid-body">
+      <!-- Grid cells will be dynamically injected here -->
+    </div>
+  </div>
+
+  <div class="contribution-footer">
+    <div id="monthly-total" class="monthly-total">
+      Total: 0 sessions
+    </div>
+    <div class="contribution-legend">
+      <span>Less</span>
+      <div class="legend-cells">
+        <div class="legend-cell level-0"></div>
+        <div class="legend-cell level-1"></div>
+        <div class="legend-cell level-2"></div>
+        <div class="legend-cell level-3"></div>
+        <div class="legend-cell level-4"></div>
+      </div>
+      <span>More</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  let sessions = [];
+  // Initialize with current date
+  let selectedDate = new Date();
+
+  const prevMonthBtn = document.getElementById('prev-month-btn');
+  const nextMonthBtn = document.getElementById('next-month-btn');
+  const currentMonthDisplay = document.getElementById('current-month-display');
+  const gridBody = document.getElementById('contribution-grid-body');
+  const monthlyTotalEl = document.getElementById('monthly-total');
+
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+
+  async function fetchSessions() {
+    try {
+      const response = await fetch('/api/sessions');
+      if (!response.ok) throw new Error('Failed to fetch sessions');
+      sessions = await response.json();
+      render();
+    } catch (err) {
+      console.error('Error fetching sessions for contribution grid:', err);
+    }
+  }
+
+  function getSessionCountsByDate() {
+    const counts = {};
+    sessions.forEach(session => {
+      if (!session.end_time) return;
+      const date = new Date(session.end_time);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dateKey = `${year}-${month}-${day}`;
+      
+      counts[dateKey] = (counts[dateKey] || 0) + 1;
+    });
+    return counts;
+  }
+
+  function getLevel(count) {
+    if (count === 0) return 0;
+    if (count === 1) return 1;
+    if (count === 2) return 2;
+    if (count === 3) return 3;
+    return 4;
+  }
+
+  function render() {
+    const year = selectedDate.getFullYear();
+    const month = selectedDate.getMonth();
+
+    // Update Header
+    currentMonthDisplay.textContent = `${monthNames[month]} ${year}`;
+
+    // Clear Grid
+    gridBody.innerHTML = '';
+
+    // Calculate dates
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+
+    const startOffset = firstDay.getDay(); // 0 is Sunday, 6 is Saturday
+    const startDate = new Date(year, month, 1 - startOffset);
+
+    const endOffset = 6 - lastDay.getDay();
+    const endDate = new Date(year, month + 1, endOffset);
+
+    const sessionCounts = getSessionCountsByDate();
+    let totalSessionsThisMonth = 0;
+
+    // Generate grid items
+    const tempDate = new Date(startDate);
+    while (tempDate <= endDate) {
+      const isCurrentMonth = tempDate.getMonth() === month;
+      
+      const cell = document.createElement('div');
+      cell.className = 'grid-cell';
+
+      if (isCurrentMonth) {
+        const y = tempDate.getFullYear();
+        const m = String(tempDate.getMonth() + 1).padStart(2, '0');
+        const d = String(tempDate.getDate()).padStart(2, '0');
+        const dateKey = `${y}-${m}-${d}`;
+        const count = sessionCounts[dateKey] || 0;
+        
+        totalSessionsThisMonth += count;
+        
+        const level = getLevel(count);
+        cell.classList.add(`level-${level}`);
+        
+        // Tooltip text formatting
+        const formattedDate = tempDate.toLocaleDateString(undefined, { 
+          weekday: 'short', 
+          year: 'numeric', 
+          month: 'short', 
+          day: 'numeric' 
+        });
+        const sessionText = count === 1 ? '1 session' : `${count} sessions`;
+        cell.setAttribute('data-tooltip', `${sessionText} on ${formattedDate}`);
+      } else {
+        cell.classList.add('other-month');
+      }
+
+      gridBody.appendChild(cell);
+      tempDate.setDate(tempDate.getDate() + 1);
+    }
+
+    // Update total sessions counter
+    monthlyTotalEl.textContent = `Total: ${totalSessionsThisMonth} session${totalSessionsThisMonth !== 1 ? 's' : ''}`;
+  }
+
+  prevMonthBtn.addEventListener('click', () => {
+    selectedDate.setMonth(selectedDate.getMonth() - 1);
+    render();
+  });
+
+  nextMonthBtn.addEventListener('click', () => {
+    selectedDate.setMonth(selectedDate.getMonth() + 1);
+    render();
+  });
+
+  // Initial fetch and render
+  fetchSessions();
+  
+  // Re-fetch sessions when a new session is logged (listen to custom/timer updates if any, or poll periodically)
+  // For simplicity, we can also refresh metrics when user interacts or just on load.
+  // We can listen to a custom event if we fire one from FocusTimer.astro
+  window.addEventListener('session-logged', () => {
+    fetchSessions();
+  });
+</script>
+
+<style>
+  .contribution-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--card-shadow);
+    border-radius: 24px;
+    padding: 1.75rem;
+    width: 100%;
+    backdrop-filter: blur(12px);
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .contribution-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .contribution-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .month-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .nav-btn {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    cursor: pointer;
+    border-radius: 8px;
+    padding: 0.35rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.2s ease;
+  }
+
+  .nav-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--text-secondary);
+  }
+
+  .month-display {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    min-width: 110px;
+    text-align: center;
+  }
+
+  .grid-wrapper {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    align-items: center;
+    padding: 0.5rem 0;
+    overflow-x: auto;
+  }
+
+  .grid-labels {
+    display: grid;
+    grid-template-rows: repeat(7, 14px);
+    gap: 3px;
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    text-align: right;
+    padding-right: 0.25rem;
+  }
+
+  .label-empty {
+    height: 14px;
+  }
+
+  .grid-body {
+    display: grid;
+    grid-template-rows: repeat(7, 14px);
+    grid-auto-columns: 14px;
+    grid-auto-flow: column;
+    gap: 3px;
+  }
+
+  :global(.grid-cell) {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    transition: all 0.15s ease;
+    position: relative;
+    cursor: pointer;
+  }
+
+  :global(.grid-cell.other-month) {
+    background: transparent;
+    cursor: default;
+    pointer-events: none;
+  }
+
+  :global(.grid-cell.level-0) {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.02);
+  }
+
+  :global(.grid-cell.level-0:hover) {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  :global(.grid-cell.level-1) {
+    background: rgba(132, 204, 22, 0.25);
+    border: 1px solid rgba(132, 204, 22, 0.1);
+  }
+
+  :global(.grid-cell.level-1:hover) {
+    background: rgba(132, 204, 22, 0.4);
+  }
+
+  :global(.grid-cell.level-2) {
+    background: rgba(132, 204, 22, 0.5);
+    border: 1px solid rgba(132, 204, 22, 0.2);
+  }
+
+  :global(.grid-cell.level-2:hover) {
+    background: rgba(132, 204, 22, 0.65);
+  }
+
+  :global(.grid-cell.level-3) {
+    background: rgba(132, 204, 22, 0.75);
+    border: 1px solid rgba(132, 204, 22, 0.3);
+  }
+
+  :global(.grid-cell.level-3:hover) {
+    background: rgba(132, 204, 22, 0.85);
+  }
+
+  :global(.grid-cell.level-4) {
+    background: rgba(132, 204, 22, 1);
+    box-shadow: 0 0 8px rgba(132, 204, 22, 0.5);
+  }
+
+  :global(.grid-cell.level-4:hover) {
+    background: #a3e635;
+    box-shadow: 0 0 12px rgba(132, 204, 22, 0.8);
+  }
+
+  /* Tooltip styling */
+  :global(.grid-cell[data-tooltip]::after) {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 150%;
+    left: 50%;
+    transform: translateX(-50%) scale(0.9);
+    background: #161b22;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    z-index: 100;
+  }
+
+  :global(.grid-cell[data-tooltip]:hover::after) {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+
+  .contribution-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
+
+  .contribution-legend {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .legend-cells {
+    display: flex;
+    gap: 3px;
+  }
+
+  .legend-cell {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+  }
+
+  .legend-cell.level-0 { background: rgba(255, 255, 255, 0.04); }
+  .legend-cell.level-1 { background: rgba(132, 204, 22, 0.25); }
+  .legend-cell.level-2 { background: rgba(132, 204, 22, 0.5); }
+  .legend-cell.level-3 { background: rgba(132, 204, 22, 0.75); }
+  .legend-cell.level-4 { background: rgba(132, 204, 22, 1); }
+</style>
