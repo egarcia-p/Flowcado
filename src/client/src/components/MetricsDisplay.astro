@@ -2,7 +2,7 @@
   <h3 class="metrics-title">Your Flow State</h3>
   <div class="metrics-grid">
     <div class="metric-item">
-      <span class="metric-label">Total Sessions</span>
+      <span class="metric-label">Weekly Sessions</span>
       <span id="total-sessions" class="metric-val">0</span>
     </div>
     <div class="metric-item">
@@ -28,7 +28,12 @@
       const sessions = await response.json();
 
       // --- Metric Calculation Logic ---
-      let totalCount = sessions.length;
+      const now = new Date();
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay()); // Go back to Sunday
+      startOfWeek.setHours(0, 0, 0, 0);
+      const weeklySessions = sessions.filter(session => new Date(session.end_time) >= startOfWeek);
+      let totalCount = weeklySessions.length;
       totalSessionsEl.textContent = totalCount;
 
       // Simple streak calculation (requires sorting and date comparison)
@@ -50,8 +55,8 @@
         }
         currentStreakEl.textContent = `${streakCount} day${streakCount !== 1 ? 's' : ''}`;
 
-        // Simple weekly average (assuming sessions are logged over the last week for simplicity)
-        const totalDurationMinutes = sessions.reduce((sum, session) => sum + session.total_duration_minutes, 0);
+        // Simple weekly average
+        const totalDurationMinutes = weeklySessions.reduce((sum, session) => sum + session.total_duration_minutes, 0);
         const avgPerSession = totalCount > 0 ? Math.round(totalDurationMinutes / totalCount) : 0;
         weeklyAverageEl.textContent = `${avgPerSession} minutes`;
 
