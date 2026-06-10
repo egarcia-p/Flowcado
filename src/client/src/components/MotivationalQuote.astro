@@ -1,0 +1,63 @@
+---
+import fs from 'fs';
+import path from 'path';
+
+// Read quotes from JSON file
+const quotesPath = path.join(process.cwd(), 'public/quotes.json');
+const quotesData = fs.readFileSync(quotesPath, 'utf-8');
+const quotes = JSON.parse(quotesData);
+
+// Select a random quote
+const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+---
+
+<section class="quote-section">
+  <blockquote class="quote-text">
+    "{randomQuote.text}"
+  </blockquote>
+  <p class="quote-author">— {randomQuote.author}</p>
+</section>
+
+<style>
+  .quote-section {
+    background: linear-gradient(135deg, rgba(132, 204, 22, 0.1) 0%, rgba(132, 204, 22, 0.05) 100%);
+    border: 1px solid rgba(132, 204, 22, 0.2);
+    border-radius: 12px;
+    padding: 24px;
+    margin: 24px 0;
+    text-align: center;
+    backdrop-filter: blur(10px);
+  }
+
+  .quote-text {
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: #f0f6fc;
+    line-height: 1.6;
+    margin-bottom: 12px;
+    font-style: italic;
+    letter-spacing: 0.3px;
+  }
+
+  .quote-author {
+    font-size: 0.95rem;
+    color: #8b949e;
+    margin: 0;
+    font-weight: 400;
+  }
+
+  @media (max-width: 768px) {
+    .quote-section {
+      padding: 16px;
+      margin: 16px 0;
+    }
+
+    .quote-text {
+      font-size: 1rem;
+    }
+
+    .quote-author {
+      font-size: 0.85rem;
+    }
+  }
+</style>
