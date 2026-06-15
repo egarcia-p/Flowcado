@@ -1,8 +1,8 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
-// Define the path for the database file in the project root
-const dbPath = path.resolve(__dirname, '../flowcado.db'); 
+// Define the path for the database file, supporting custom environments like Docker volumes
+const dbPath = process.env.DATABASE_PATH || path.resolve(__dirname, '../flowcado.db'); 
 const db = new sqlite3.Database(dbPath);
 
 /**

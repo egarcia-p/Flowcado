@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  flowcado:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: flowcado:latest
+    container_name: flowcado
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_PATH=/data/flowcado.db
+    volumes:
+      - ./data:/data # Bind mount to make database migration and backups easy
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - flowcado
+
+volumes:
+  caddy-data:
+  caddy-config:

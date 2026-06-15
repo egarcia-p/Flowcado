@@ -1,0 +1,9 @@
+# Ignore node_modules from being copied into build context
+**/node_modules/
+**/dist/
+**/.astro/
+**/temp/
+**/.git/
+src/flowcado.db
+caddy-data/
+caddy-config/

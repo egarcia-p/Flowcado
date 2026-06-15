@@ -1,12 +1,16 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const path = require('path');
 const db = require('./db'); // Import our database handler
 
 const app = express();
-const PORT = 3001; // Using a dedicated port for the backend API
+const PORT = process.env.PORT || 3001; // Support environment port or fallback to 3001
 
 // Middleware setup
 app.use(bodyParser.json());
+
+// Serve static assets from 'public' directory
+app.use(express.static(path.join(__dirname, 'public')));
 
 // --- API Endpoints ---
 
