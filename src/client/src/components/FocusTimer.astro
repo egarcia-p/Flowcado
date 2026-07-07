@@ -12,76 +12,131 @@
   const timerDisplay = document.getElementById("timer-display");
   const startButton = document.getElementById("start-btn");
   const pauseButton = document.getElementById("pause-btn");
-  let timeInSeconds = initialTimeMinutes * 60;
-  let intervalId = null;
-  let startTime = null;
 
-  function formatTime(seconds) {
-    const minutes = Math.floor(seconds / 60);
-    const secondsRemaining = seconds % 60;
-    return `${String(minutes).padStart(2, "0")}:${String(secondsRemaining).padStart(2, "0")}`;
+  const TOTAL_MS = initialTimeMinutes * 60 * 1000;
+
+  // --- State ---
+  let intervalId = null;
+  let sessionStartTime = null; // Wall-clock time when the user first pressed Start
+  let endTime = null;          // Absolute timestamp when the timer should reach zero
+  let remainingMs = TOTAL_MS;  // Tracks remaining time while paused
+
+  // --- Helpers ---
+  function formatTime(ms) {
+    const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
   }
 
-  timerDisplay.textContent = formatTime(timeInSeconds);
+  function updateDisplay() {
+    if (endTime !== null) {
+      // Running: derive remaining time from the real clock
+      timerDisplay.textContent = formatTime(endTime - Date.now());
+    } else {
+      // Paused or not started: show stored remaining time
+      timerDisplay.textContent = formatTime(remainingMs);
+    }
+  }
 
+  // Initial display
+  updateDisplay();
+
+  // --- Core tick ---
+  function tick() {
+    const remaining = endTime - Date.now();
+    timerDisplay.textContent = formatTime(remaining);
+
+    if (remaining <= 0) {
+      // Timer finished
+      clearInterval(intervalId);
+      intervalId = null;
+      endTime = null;
+      remainingMs = 0;
+
+      timerDisplay.textContent = "00:00";
+      startButton.disabled = false;
+      startButton.textContent = "Reset";
+      pauseButton.disabled = true;
+
+      // Log completed session
+      const now = new Date();
+      fetch("/api/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          start_time: sessionStartTime.toISOString(),
+          end_time: now.toISOString(),
+          total_duration_minutes: initialTimeMinutes,
+          status: "completed",
+        }),
+      }).then(() => {
+        window.dispatchEvent(new CustomEvent("session-logged"));
+      });
+    }
+  }
+
+  // --- Controls ---
   function startTimer() {
     if (intervalId) return; // Already running
 
-    if (!startTime) {
-      startTime = new Date();
+    if (!sessionStartTime) {
+      sessionStartTime = new Date(); // Record wall-clock session start
     }
+
+    // Set the absolute end time from now + however much is left
+    endTime = Date.now() + remainingMs;
 
     startButton.disabled = true;
     startButton.textContent = "Running...";
     pauseButton.disabled = false;
 
-    intervalId = setInterval(() => {
-      timeInSeconds--;
-      timerDisplay.textContent = formatTime(timeInSeconds);
-
-      if (timeInSeconds <= 0) {
-        clearInterval(intervalId);
-        intervalId = null;
-        startButton.disabled = false;
-        startButton.textContent = "Reset";
-        pauseButton.disabled = true;
-
-        // Log session completion via API
-        const endTime = new Date();
-        const durationMinutes = Math.round((endTime - startTime) / 60000); // Duration in minutes
-        fetch("/api/session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            start_time: startTime.toISOString(),
-            end_time: endTime.toISOString(),
-            total_duration_minutes: durationMinutes,
-            status: "completed",
-          }),
-        }).then(() => {
-          window.dispatchEvent(new CustomEvent('session-logged'));
-        });
-      }
-    }, 1000);
+    // Tick every 250ms: cheap enough to recover quickly after tab throttling
+    intervalId = setInterval(tick, 250);
+    tick(); // Run immediately so display updates without 250ms delay
   }
 
   function pauseTimer() {
     if (!intervalId) return;
+
+    // Snapshot remaining time from the real clock before stopping
+    remainingMs = Math.max(0, endTime - Date.now());
+    endTime = null;
+
     clearInterval(intervalId);
     intervalId = null;
+
+    updateDisplay();
     startButton.disabled = false;
     startButton.textContent = "Resume";
     pauseButton.disabled = true;
   }
 
   function resetTimer() {
-    timeInSeconds = initialTimeMinutes * 60;
-    startTime = null;
-    timerDisplay.textContent = formatTime(timeInSeconds);
+    if (intervalId) {
+      clearInterval(intervalId);
+      intervalId = null;
+    }
+    sessionStartTime = null;
+    endTime = null;
+    remainingMs = TOTAL_MS;
+
+    updateDisplay();
+    startButton.disabled = false;
     startButton.textContent = "Start";
     pauseButton.disabled = true;
   }
 
+  // --- Page Visibility API ---
+  // When the tab comes back into focus, force an immediate display update
+  // so the user never sees a stale (throttled) value.
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && intervalId) {
+      updateDisplay();
+    }
+  });
+
+  // --- Event listeners ---
   startButton.addEventListener("click", () => {
     if (startButton.textContent === "Reset") {
       resetTimer();
