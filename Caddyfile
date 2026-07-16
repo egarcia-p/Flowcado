@@ -1,0 +1,5 @@
+# Caddyfile - Reverse proxy for Flowcado
+# Caddy listens on :80 and proxies to the app on :3001
+:80 {
+    reverse_proxy flowcado:3001
+}
