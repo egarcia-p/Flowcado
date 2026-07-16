@@ -4,3 +4,5 @@ src/client/.astro/
 src/flowcado.db
 plans/
 opencode.json
+.env.local
+*.tar

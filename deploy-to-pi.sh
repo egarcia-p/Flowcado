@@ -17,9 +17,14 @@
 
 set -euo pipefail
 
+# Load local configuration overrides if present
+if [[ -f .env.local ]]; then
+    source .env.local
+fi
+
 # --- Config -------------------------------------------------------------------
-PI_HOST="${PI_HOST:-host}"
-PI_USER="${PI_USER:-user}"
+PI_HOST="${PI_HOST:-raspberrypi.local}"
+PI_USER="${PI_USER:-pi}"
 PI_PATH="${PI_PATH:-~/Flowcado}"
 IMAGE_NAME="flowcado"
 IMAGE_TAG="latest"
