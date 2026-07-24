@@ -1,25 +1,97 @@
-<div class="focus-timer-card">
+<div class="focus-timer-card" id="timer-card">
+  <div class="timer-top-bar">
+    <div class="mode-selector" role="tablist" aria-label="Timer Mode Selector">
+      <button id="mode-focus-btn" class="mode-btn active" role="tab" aria-selected="true" data-mode="focus">Focus (25m)</button>
+      <button id="mode-break-btn" class="mode-btn" role="tab" aria-selected="false" data-mode="break">Break (5m)</button>
+    </div>
+    <button id="sound-toggle-btn" class="sound-toggle-btn" title="Toggle sound notifications" aria-label="Toggle Sound">
+      <span id="sound-icon">🔊</span>
+    </button>
+  </div>
+
   <div class="timer-display-container">
     <div class="timer-glow"></div>
     <span id="timer-display">25:00</span>
   </div>
+
   <div class="timer-controls">
     <button id="start-btn" class="control-btn primary">Start</button>
     <button id="pause-btn" class="control-btn secondary" disabled>Pause</button>
   </div>
 </div>
-<script define:vars={{ initialTimeMinutes: 25 }}>
+
+<script define:vars={{ initialTimeMinutes: 25, breakTimeMinutes: 5 }}>
+  const timerCard = document.getElementById("timer-card");
   const timerDisplay = document.getElementById("timer-display");
   const startButton = document.getElementById("start-btn");
   const pauseButton = document.getElementById("pause-btn");
+  const focusModeBtn = document.getElementById("mode-focus-btn");
+  const breakModeBtn = document.getElementById("mode-break-btn");
+  const soundToggleBtn = document.getElementById("sound-toggle-btn");
+  const soundIcon = document.getElementById("sound-icon");
 
-  const TOTAL_MS = initialTimeMinutes * 60 * 1000;
+  const FOCUS_MS = initialTimeMinutes * 60 * 1000;
+  const BREAK_MS = breakTimeMinutes * 60 * 1000;
+  const DEFAULT_TITLE = "Flowcado - Focus Timer";
 
   // --- State ---
+  let currentMode = "focus"; // "focus" | "break"
+  let totalMs = FOCUS_MS;
   let intervalId = null;
-  let sessionStartTime = null; // Wall-clock time when the user first pressed Start
-  let endTime = null;          // Absolute timestamp when the timer should reach zero
-  let remainingMs = TOTAL_MS;  // Tracks remaining time while paused
+  let sessionStartTime = null;
+  let endTime = null;
+  let remainingMs = totalMs;
+  let soundEnabled = true;
+  let audioCtx = null;
+
+  // --- Web Audio Synthesizer ---
+  function initAudio() {
+    if (!audioCtx) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (AudioContextClass) {
+        audioCtx = new AudioContextClass();
+      }
+    }
+    if (audioCtx && audioCtx.state === "suspended") {
+      audioCtx.resume();
+    }
+  }
+
+  function playCompletionChime() {
+    if (!soundEnabled) return;
+    try {
+      initAudio();
+      if (!audioCtx) return;
+
+      const now = audioCtx.currentTime;
+
+      // Note 1: E5 (659.25 Hz)
+      const osc1 = audioCtx.createOscillator();
+      const gain1 = audioCtx.createGain();
+      osc1.type = "sine";
+      osc1.frequency.setValueAtTime(659.25, now);
+      gain1.gain.setValueAtTime(0.2, now);
+      gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.6);
+      osc1.connect(gain1);
+      gain1.connect(audioCtx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.6);
+
+      // Note 2: B5 (987.77 Hz)
+      const osc2 = audioCtx.createOscillator();
+      const gain2 = audioCtx.createGain();
+      osc2.type = "sine";
+      osc2.frequency.setValueAtTime(987.77, now + 0.18);
+      gain2.gain.setValueAtTime(0.25, now + 0.18);
+      gain2.gain.exponentialRampToValueAtTime(0.0001, now + 1.0);
+      osc2.connect(gain2);
+      gain2.connect(audioCtx.destination);
+      osc2.start(now + 0.18);
+      osc2.stop(now + 1.0);
+    } catch (e) {
+      console.warn("Audio chime error:", e);
+    }
+  }
 
   // --- Helpers ---
   function formatTime(ms) {
@@ -29,14 +101,63 @@
     return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
   }
 
+  function getFormattedRemaining() {
+    const ms = endTime !== null ? endTime - Date.now() : remainingMs;
+    return formatTime(ms);
+  }
+
+  function updatePageTitle(statusLabel) {
+    const timeStr = getFormattedRemaining();
+    const modeName = currentMode === "focus" ? "Focus" : "Break";
+    if (statusLabel === "completed") {
+      document.title = `(00:00) ${modeName} finished! - Flowcado`;
+    } else if (statusLabel === "paused") {
+      document.title = `(Paused ${timeStr}) ${modeName} - Flowcado`;
+    } else if (intervalId !== null) {
+      document.title = `(${timeStr}) ${modeName} - Flowcado`;
+    } else {
+      document.title = DEFAULT_TITLE;
+    }
+  }
+
   function updateDisplay() {
     if (endTime !== null) {
-      // Running: derive remaining time from the real clock
       timerDisplay.textContent = formatTime(endTime - Date.now());
     } else {
-      // Paused or not started: show stored remaining time
       timerDisplay.textContent = formatTime(remainingMs);
     }
+    updatePageTitle(endTime !== null ? "running" : (remainingMs < totalMs ? "paused" : "idle"));
+  }
+
+  function setMode(mode) {
+    if (intervalId) {
+      clearInterval(intervalId);
+      intervalId = null;
+    }
+    currentMode = mode;
+    totalMs = mode === "focus" ? FOCUS_MS : BREAK_MS;
+    remainingMs = totalMs;
+    endTime = null;
+    sessionStartTime = null;
+
+    if (mode === "focus") {
+      focusModeBtn.classList.add("active");
+      focusModeBtn.setAttribute("aria-selected", "true");
+      breakModeBtn.classList.remove("active");
+      breakModeBtn.setAttribute("aria-selected", "false");
+      timerCard.classList.remove("break-mode");
+    } else {
+      breakModeBtn.classList.add("active");
+      breakModeBtn.setAttribute("aria-selected", "true");
+      focusModeBtn.classList.remove("active");
+      focusModeBtn.setAttribute("aria-selected", "false");
+      timerCard.classList.add("break-mode");
+    }
+
+    startButton.disabled = false;
+    startButton.textContent = "Start";
+    pauseButton.disabled = true;
+    updateDisplay();
   }
 
   // Initial display
@@ -46,6 +167,7 @@
   function tick() {
     const remaining = endTime - Date.now();
     timerDisplay.textContent = formatTime(remaining);
+    updatePageTitle("running");
 
     if (remaining <= 0) {
       // Timer finished
@@ -58,48 +180,53 @@
       startButton.disabled = false;
       startButton.textContent = "Reset";
       pauseButton.disabled = true;
+      updatePageTitle("completed");
 
-      // Log completed session
-      const now = new Date();
-      fetch("/api/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          start_time: sessionStartTime.toISOString(),
-          end_time: now.toISOString(),
-          total_duration_minutes: initialTimeMinutes,
-          status: "completed",
-        }),
-      }).then(() => {
-        window.dispatchEvent(new CustomEvent("session-logged"));
-      });
+      // Play completion chime
+      playCompletionChime();
+
+      // Log completed session if it was a Focus session
+      if (currentMode === "focus") {
+        const now = new Date();
+        const start = sessionStartTime || new Date(now.getTime() - FOCUS_MS);
+        fetch("/api/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            start_time: start.toISOString(),
+            end_time: now.toISOString(),
+            total_duration_minutes: initialTimeMinutes,
+            status: "completed",
+          }),
+        }).then(() => {
+          window.dispatchEvent(new CustomEvent("session-logged"));
+        });
+      }
     }
   }
 
   // --- Controls ---
   function startTimer() {
-    if (intervalId) return; // Already running
+    initAudio(); // User gesture unlocks Web Audio API
+    if (intervalId) return;
 
     if (!sessionStartTime) {
-      sessionStartTime = new Date(); // Record wall-clock session start
+      sessionStartTime = new Date();
     }
 
-    // Set the absolute end time from now + however much is left
     endTime = Date.now() + remainingMs;
 
     startButton.disabled = true;
     startButton.textContent = "Running...";
     pauseButton.disabled = false;
 
-    // Tick every 250ms: cheap enough to recover quickly after tab throttling
     intervalId = setInterval(tick, 250);
-    tick(); // Run immediately so display updates without 250ms delay
+    tick();
   }
 
   function pauseTimer() {
     if (!intervalId) return;
 
-    // Snapshot remaining time from the real clock before stopping
     remainingMs = Math.max(0, endTime - Date.now());
     endTime = null;
 
@@ -107,6 +234,7 @@
     intervalId = null;
 
     updateDisplay();
+    updatePageTitle("paused");
     startButton.disabled = false;
     startButton.textContent = "Resume";
     pauseButton.disabled = true;
@@ -119,7 +247,7 @@
     }
     sessionStartTime = null;
     endTime = null;
-    remainingMs = TOTAL_MS;
+    remainingMs = totalMs;
 
     updateDisplay();
     startButton.disabled = false;
@@ -127,16 +255,14 @@
     pauseButton.disabled = true;
   }
 
-  // --- Page Visibility API ---
-  // When the tab comes back into focus, force an immediate display update
-  // so the user never sees a stale (throttled) value.
+  // --- Visibility API ---
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden && intervalId) {
       updateDisplay();
     }
   });
 
-  // --- Event listeners ---
+  // --- Listeners ---
   startButton.addEventListener("click", () => {
     if (startButton.textContent === "Reset") {
       resetTimer();
@@ -144,7 +270,26 @@
       startTimer();
     }
   });
+
   pauseButton.addEventListener("click", pauseTimer);
+
+  focusModeBtn.addEventListener("click", () => {
+    if (currentMode !== "focus") setMode("focus");
+  });
+
+  breakModeBtn.addEventListener("click", () => {
+    if (currentMode !== "break") setMode("break");
+  });
+
+  soundToggleBtn.addEventListener("click", () => {
+    initAudio();
+    soundEnabled = !soundEnabled;
+    soundIcon.textContent = soundEnabled ? "🔊" : "🔇";
+    soundToggleBtn.classList.toggle("muted", !soundEnabled);
+    if (soundEnabled) {
+      playCompletionChime(); // Brief preview when turning back on
+    }
+  });
 </script>
 
 <style>
@@ -153,25 +298,106 @@
     border: 1px solid var(--border-color);
     box-shadow: var(--card-shadow);
     border-radius: 24px;
-    padding: 2.5rem 2rem;
+    padding: 2rem 1.75rem;
     width: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2rem;
+    gap: 1.75rem;
     backdrop-filter: blur(12px);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .focus-timer-card.break-mode {
+    border-color: rgba(56, 189, 248, 0.4);
+  }
+
+  .timer-top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+  }
+
+  .mode-selector {
+    display: flex;
+    background: rgba(10, 10, 10, 0.5);
+    padding: 4px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    gap: 4px;
+  }
+
+  .mode-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.4rem 0.9rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .mode-btn:hover {
+    color: var(--text-primary);
+  }
+
+  .mode-btn.active {
+    background: var(--border-color);
+    color: var(--text-primary);
+  }
+
+  #mode-focus-btn.active {
+    background: rgba(132, 204, 22, 0.2);
+    color: #a3e635;
+  }
+
+  #mode-break-btn.active {
+    background: rgba(56, 189, 248, 0.2);
+    color: #38bdf8;
+  }
+
+  .sound-toggle-btn {
+    background: rgba(10, 10, 10, 0.5);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .sound-toggle-btn:hover {
+    background: var(--border-color);
+    transform: scale(1.05);
+  }
+
+  .sound-toggle-btn.muted {
+    opacity: 0.5;
   }
 
   .timer-display-container {
     position: relative;
-    width: 220px;
-    height: 220px;
+    width: 210px;
+    height: 210px;
     display: flex;
     justify-content: center;
     align-items: center;
     border-radius: 50%;
     border: 3px solid var(--border-color);
     background: rgba(10, 10, 10, 0.4);
+    transition: border-color 0.3s ease;
+  }
+
+  .break-mode .timer-display-container {
+    border-color: rgba(56, 189, 248, 0.3);
   }
 
   .timer-glow {
@@ -183,6 +409,11 @@
     border-radius: 50%;
     box-shadow: inset 0 0 25px var(--accent-glow);
     pointer-events: none;
+    transition: box-shadow 0.3s ease;
+  }
+
+  .break-mode .timer-glow {
+    box-shadow: inset 0 0 25px rgba(56, 189, 248, 0.2);
   }
 
   #timer-display {
@@ -192,6 +423,11 @@
     color: var(--text-primary);
     text-shadow: 0 0 10px var(--accent-glow);
     letter-spacing: -0.02em;
+    transition: text-shadow 0.3s ease;
+  }
+
+  .break-mode #timer-display {
+    text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
   }
 
   .timer-controls {
@@ -217,10 +453,19 @@
     color: #05070a;
   }
 
+  .break-mode .control-btn.primary {
+    background-color: #38bdf8;
+  }
+
   .control-btn.primary:hover:not(:disabled) {
     background-color: #a3e635;
     transform: translateY(-2px);
     box-shadow: 0 4px 15px rgba(132, 204, 22, 0.4);
+  }
+
+  .break-mode .control-btn.primary:hover:not(:disabled) {
+    background-color: #7dd3fc;
+    box-shadow: 0 4px 15px rgba(56, 189, 248, 0.4);
   }
 
   .control-btn.secondary {
@@ -241,3 +486,4 @@
     box-shadow: none !important;
   }
 </style>
+
