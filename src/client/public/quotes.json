@@ -1,7 +1,27 @@
 [
+    {
+    "text": "The expert in anything was once a beginner.",
+    "author": "Helen Hayes"
+  },
   {
-    "text": "The only way to do great work is to love what you do.",
-    "author": "Steve Jobs"
+    "text": "You miss 100% of the shots you don’t take.",
+    "author": "Wayne Gretzky"
+  },
+  {
+    "text": "A life spent making mistakes is not only more honorable but more useful than a life spent doing nothing.",
+    "author": "George Bernard Shaw"
+  },
+  {
+    "text": "Great minds discuss ideas; average minds discuss events; small minds discuss people.",
+    "author": "Eleanor Roosevelt"
+  },
+  {
+    "text": "The ability to perform deep work is becoming increasingly rare at the exact same time it is becoming increasingly valuable in our economy. As a consequence, the few who cultivate this skill, and then make it the core of their working life, will thrive.",
+    "author": "Cal Newport"
+  },
+  {
+    "text": "To produce at your peak level you need to work for extended periods with full concentration on a single task free from distraction.",
+    "author": "Cal Newport"
   },
   {
     "text": "Focus on being productive instead of busy.",
@@ -26,5 +46,9 @@
   {
     "text": "It always seems impossible until it's done.",
     "author": "Nelson Mandela"
+  },
+  {
+    "text": "Simplicity is the ultimate sophistication.",
+    "author": "Leonardo da Vinci"
   }
 ]
