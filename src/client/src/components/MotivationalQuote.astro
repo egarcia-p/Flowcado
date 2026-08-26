@@ -7,16 +7,35 @@ const quotesPath = path.join(process.cwd(), 'public/quotes.json');
 const quotesData = fs.readFileSync(quotesPath, 'utf-8');
 const quotes = JSON.parse(quotesData);
 
-// Select a random quote
-const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+// Select quote based on current day
+const now = new Date();
+const dayIndex = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / (1000 * 60 * 60 * 24));
+const dailyQuote = quotes.length > 0 ? quotes[((dayIndex % quotes.length) + quotes.length) % quotes.length] : { text: 'Could not retrieve a quote of the day', author: 'Flowcado' };
 ---
 
 <section class="quote-section">
-  <blockquote class="quote-text">
-    "{randomQuote.text}"
+  <blockquote class="quote-text" id="quote-text">
+    "{dailyQuote.text}"
   </blockquote>
-  <p class="quote-author">— {randomQuote.author}</p>
+  <p class="quote-author" id="quote-author">— {dailyQuote.author}</p>
 </section>
+
+<script define:vars={{ quotes }}>
+  function updateDailyQuote() {
+    const quoteTextEl = document.getElementById('quote-text');
+    const quoteAuthorEl = document.getElementById('quote-author');
+    if (!quoteTextEl || !quoteAuthorEl || !quotes || quotes.length === 0) return;
+
+    const now = new Date();
+    const dayIndex = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / (1000 * 60 * 60 * 24));
+    const quote = quotes[((dayIndex % quotes.length) + quotes.length) % quotes.length];
+
+    quoteTextEl.textContent = `"${quote.text}"`;
+    quoteAuthorEl.textContent = `— ${quote.author}`;
+  }
+
+  updateDailyQuote();
+</script>
 
 <style>
   .quote-section {
